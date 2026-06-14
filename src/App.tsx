@@ -350,6 +350,8 @@ const DEFAULT_RUNTIME_STATE: RuntimeState = {
   recent_messages: [],
 };
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "https://inik-agent.onrender.com").replace(/\/$/, "");
+
 function welcomeMessage() {
   return {role:'assistant',text:"Welcome back, traveler. The café is quiet tonight — just the hum of the cosmos and me. What's drifting through your mind?",time:'just now'};
 }
@@ -410,7 +412,7 @@ function formatFactContent(key:string,value:any) {
 
 async function fetchRuntimeState(): Promise<RuntimeState> {
   const userId = getStableUserId();
-  const r = await fetch(`/api/state?user_id=${encodeURIComponent(userId)}`);
+  const r = await fetch(`${API_BASE}/api/state?user_id=${encodeURIComponent(userId)}`);
   if (!r.ok) throw new Error("state fetch failed");
   return await r.json();
 }
@@ -439,7 +441,7 @@ function ChatPage(){
     setMsgs(p=>[...p,{role:'user',text:txt,time:'just now'}]);
     setLoading(true);
     try{
-      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      const r = await fetch(`${API_BASE}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id:userId,username:'traveler',message:txt})});
       if(!r.ok)throw new Error();
       const d=await r.json();
