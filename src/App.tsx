@@ -464,7 +464,7 @@ function ChatPage(){
       setMsgs(p=>[...p,{role:'assistant',text:d.reply,time:'just now',suggestedAgent}]);
       if(d.state)setState({...DEFAULT_RUNTIME_STATE,...d.state});
     }catch{
-      setMsgs(p=>[...p,{role:'assistant',text:MOCK_REPLIES[Math.floor(Math.random()*MOCK_REPLIES.length)],time:'just now'}]);
+      setMsgs(p=>[...p,{role:'assistant',text:'ตอนนี้เชื่อมต่อ backend ไม่สำเร็จ ลองใหม่อีกครั้งหลังจากระบบตื่นเต็มที่นะ',time:'just now'}]);
     }finally{setLoading(false);}
   },[input,loading,userId]);
 
