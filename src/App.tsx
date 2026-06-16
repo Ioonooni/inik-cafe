@@ -308,13 +308,6 @@ function HomePage({setPage,nikImg,setNikImg}:{setPage:SetPage;nikImg:string;setN
 }
 
 // ── CHAT ──
-const MOCK_REPLIES=[
-  "The café hums softly around us. Your words fell like starlight through the skylight — I'm keeping them.",
-  "Interesting. I'll place that fragment between the lavender shelf and the cosmic window, where I keep the most peculiar ones.",
-  "Traveler... you always bring the most unusual thoughts. Let me sit with that for a moment.",
-  "The stars outside are listening too. And so am I — always.",
-  "That reminds me of something I found in the wormhole. A half-memory, still warm. I think it might belong to you.",
-];
 function getStableUserId() {
   const key = "inik_user_id";
   const existing = localStorage.getItem(key);
@@ -448,7 +441,7 @@ function ChatPage(){
       setMsgs(p=>[...p,{role:'assistant',text:d.reply,time:'just now'}]);
       if(d.state)setState({...DEFAULT_RUNTIME_STATE,...d.state});
     }catch{
-      setMsgs(p=>[...p,{role:'assistant',text:MOCK_REPLIES[Math.floor(Math.random()*MOCK_REPLIES.length)],time:'just now'}]);
+      setMsgs(p=>[...p,{role:'assistant',text:'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง',time:'just now'}]);
     }finally{setLoading(false);}
   },[input,loading,userId]);
   return(
