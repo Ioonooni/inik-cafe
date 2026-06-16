@@ -329,6 +329,21 @@ function getStableUserId() {
   return generated;
 }
 
+type SuggestedAgent = {
+  agent: string;
+  confidence: number;
+  reason: string;
+  message: string;
+  originalMessage?: string;
+};
+
+type UiMessage = {
+  role: string;
+  text: string;
+  time: string;
+  suggestedAgent?: SuggestedAgent | null;
+};
+
 type RuntimeMessage = { role:string; content:string };
 type RuntimeState = {
   stage:string;
@@ -350,11 +365,13 @@ const DEFAULT_RUNTIME_STATE: RuntimeState = {
   recent_messages: [],
 };
 
-function welcomeMessage() {
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "https://inik-agent.onrender.com").replace(/\/$/, "");
+
+function welcomeMessage(): UiMessage {
   return {role:'assistant',text:"Welcome back, traveler. The café is quiet tonight — just the hum of the cosmos and me. What's drifting through your mind?",time:'just now'};
 }
 
-function toUiMessages(messages?:RuntimeMessage[]) {
+function toUiMessages(messages?:RuntimeMessage[]): UiMessage[] {
   if (!messages || messages.length === 0) return [welcomeMessage()];
 
   return messages.map(m => ({
@@ -410,14 +427,14 @@ function formatFactContent(key:string,value:any) {
 
 async function fetchRuntimeState(): Promise<RuntimeState> {
   const userId = getStableUserId();
-  const r = await fetch(`/api/state?user_id=${encodeURIComponent(userId)}`);
+  const r = await fetch(`${API_BASE}/api/state?user_id=${encodeURIComponent(userId)}`);
   if (!r.ok) throw new Error("state fetch failed");
   return await r.json();
 }
 
 function ChatPage(){
   const [userId] = useState(getStableUserId);
-  const [msgs,setMsgs]=useState(toUiMessages());
+  const [msgs,setMsgs]=useState<UiMessage[]>(toUiMessages());
   const [input,setInput]=useState('');
   const [loading,setLoading]=useState(false);
   const [state,setState]=useState<RuntimeState>(DEFAULT_RUNTIME_STATE);
@@ -439,16 +456,34 @@ function ChatPage(){
     setMsgs(p=>[...p,{role:'user',text:txt,time:'just now'}]);
     setLoading(true);
     try{
-      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      const r = await fetch(`${API_BASE}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id:userId,username:'traveler',message:txt})});
       if(!r.ok)throw new Error();
       const d=await r.json();
-      setMsgs(p=>[...p,{role:'assistant',text:d.reply,time:'just now'}]);
+      const suggestedAgent = d.suggested_agent ? {...d.suggested_agent, originalMessage: txt} : null;
+      setMsgs(p=>[...p,{role:'assistant',text:d.reply,time:'just now',suggestedAgent}]);
       if(d.state)setState({...DEFAULT_RUNTIME_STATE,...d.state});
     }catch{
       setMsgs(p=>[...p,{role:'assistant',text:MOCK_REPLIES[Math.floor(Math.random()*MOCK_REPLIES.length)],time:'just now'}]);
     }finally{setLoading(false);}
   },[input,loading,userId]);
+
+  const sendWithAgent=useCallback(async(message:string,agentMode:string)=>{
+    if(!message.trim()||loading)return;
+    const txt=message.trim();
+    setMsgs(p=>[...p,{role:'user',text:`Rick Royce mode: ${txt}`,time:'just now'}]);
+    setLoading(true);
+    try{
+      const r = await fetch(`${API_BASE}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:userId,username:'traveler',message:txt,agent_mode:agentMode})});
+      if(!r.ok)throw new Error();
+      const d=await r.json();
+      setMsgs(p=>[...p,{role:'assistant',text:d.reply,time:'just now'}]);
+      if(d.state)setState({...DEFAULT_RUNTIME_STATE,...d.state});
+    }catch{
+      setMsgs(p=>[...p,{role:'assistant',text:'Rick Royce signal failed. Backend did not return a usable response.',time:'just now'}]);
+    }finally{setLoading(false);}
+  },[loading,userId]);
   return(
     <div style={{height:'100vh',display:'flex',paddingTop:60}}>
       {/* Sidebar */}
@@ -515,6 +550,20 @@ function ChatPage(){
               }}>
                 <p style={{color:'rgba(255,255,255,.88)',fontSize:13,lineHeight:1.75,margin:0,fontFamily:'Inter,sans-serif'}}>{m.text}</p>
                 <span style={{fontSize:9,color:'rgba(255,255,255,.25)',fontFamily:'Inter,sans-serif',marginTop:5,display:'block',letterSpacing:1}}>{m.time}</span>
+                {m.suggestedAgent?.agent==='rick_royce'&&(
+                  <div style={{marginTop:12,padding:12,borderRadius:12,background:'rgba(184,240,230,.08)',border:'1px solid rgba(184,240,230,.22)'}}>
+                    <div style={{fontSize:10,letterSpacing:1.8,color:'#b8f0e6',fontFamily:'Inter,sans-serif',marginBottom:6}}>RICK ROYCE HANDOFF</div>
+                    <p style={{fontSize:12,lineHeight:1.6,color:'rgba(255,255,255,.72)',fontFamily:'Inter,sans-serif',margin:'0 0 10px'}}>{m.suggestedAgent.message}</p>
+                    <button
+                      className="btn-p"
+                      onClick={()=>sendWithAgent(m.suggestedAgent?.originalMessage || m.text,'rick_royce')}
+                      disabled={loading}
+                      style={{padding:'8px 12px',borderRadius:9,fontSize:11}}
+                    >
+                      Talk to Rick Royce →
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
