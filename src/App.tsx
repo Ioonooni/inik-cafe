@@ -431,6 +431,7 @@ function ChatPage(){
   const [input,setInput]=useState('');
   const [loading,setLoading]=useState(false);
   const [state,setState]=useState<RuntimeState>(DEFAULT_RUNTIME_STATE);
+  const [activeMode,setActiveMode]=useState<string>('inik');
   const bottomRef=useRef<HTMLDivElement | null>(null);
 
   useEffect(()=>{
@@ -449,17 +450,20 @@ function ChatPage(){
     setMsgs(p=>[...p,{role:'user',text:txt,time:'just now'}]);
     setLoading(true);
     try{
+      const body:Record<string,string>={user_id:userId,username:'traveler',message:txt};
+      if(activeMode!=='inik')body.agent_mode=activeMode;
       const r = await fetch(`${API_BASE}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({user_id:userId,username:'traveler',message:txt})});
+        body:JSON.stringify(body)});
       if(!r.ok)throw new Error();
       const d=await r.json();
       const suggestedAgent = d.suggested_agent ? {...d.suggested_agent, originalMessage: txt} : null;
       setMsgs(p=>[...p,{role:'assistant',text:d.reply,time:'just now',suggestedAgent}]);
       if(d.state)setState({...DEFAULT_RUNTIME_STATE,...d.state});
+      if(d.agent_mode)setActiveMode(d.agent_mode);
     }catch{
       setMsgs(p=>[...p,{role:'assistant',text:'ตอนนี้เชื่อมต่อ backend ไม่สำเร็จ ลองใหม่อีกครั้งหลังจากระบบตื่นเต็มที่นะ',time:'just now'}]);
     }finally{setLoading(false);}
-  },[input,loading,userId]);
+  },[input,loading,userId,activeMode]);
 
   const sendWithAgent=useCallback(async(message:string,agentMode:string)=>{
     if(!message.trim()||loading)return;
@@ -524,8 +528,14 @@ function ChatPage(){
       <div style={{flex:1,display:'flex',flexDirection:'column'}}>
         {/* Header bar */}
         <div style={{padding:'12px 28px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',alignItems:'center',gap:12}}>
-          <div style={{width:8,height:8,borderRadius:'50%',background:'#b8f0e6',boxShadow:'0 0 8px #b8f0e6'}}/>
+          <div style={{width:8,height:8,borderRadius:'50%',background:activeMode==='rick_royce'?'#c9a8f0':'#b8f0e6',boxShadow:`0 0 8px ${activeMode==='rick_royce'?'#c9a8f0':'#b8f0e6'}`}}/>
           <span style={{fontSize:11,color:'rgba(255,255,255,.4)',letterSpacing:2,fontFamily:'Inter,sans-serif'}}>INSIDE THE CAFÉ · COSMIC FREQUENCY ACTIVE · MEMORY RECORDING</span>
+          <span style={{marginLeft:'auto',fontSize:10,letterSpacing:1.5,fontFamily:'Inter,sans-serif',padding:'3px 10px',borderRadius:20,
+            background:activeMode==='rick_royce'?'rgba(201,168,240,.18)':activeMode==='hybrid'?'rgba(255,214,200,.18)':'rgba(184,240,230,.12)',
+            border:`1px solid ${activeMode==='rick_royce'?'rgba(201,168,240,.35)':activeMode==='hybrid'?'rgba(255,200,180,.3)':'rgba(184,240,230,.25)'}`,
+            color:activeMode==='rick_royce'?'#c9a8f0':activeMode==='hybrid'?'#f0c8a8':'#b8f0e6'}}>
+            {activeMode==='rick_royce'?'RICK ROYCE':activeMode==='hybrid'?'HYBRID':'I NIK'}
+          </span>
         </div>
         {/* Messages */}
         <div style={{flex:1,overflowY:'auto',padding:'28px 36px',display:'flex',flexDirection:'column',gap:22}}>
@@ -549,7 +559,7 @@ function ChatPage(){
                     <p style={{fontSize:12,lineHeight:1.6,color:'rgba(255,255,255,.72)',fontFamily:'Inter,sans-serif',margin:'0 0 10px'}}>{m.suggestedAgent.message}</p>
                     <button
                       className="btn-p"
-                      onClick={()=>sendWithAgent(m.suggestedAgent?.originalMessage || m.text,'rick_royce')}
+                      onClick={()=>{setActiveMode('rick_royce');sendWithAgent(m.suggestedAgent?.originalMessage || m.text,'rick_royce');}}
                       disabled={loading}
                       style={{padding:'8px 12px',borderRadius:9,fontSize:11}}
                     >
@@ -581,6 +591,14 @@ function ChatPage(){
             <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}
               placeholder="Leave a fragment here..."
               style={{flex:1,background:'transparent',border:'none',outline:'none',color:'#fff',fontSize:13,fontFamily:'Inter,sans-serif'}}/>
+            {activeMode==='rick_royce'&&(
+              <button onClick={()=>setActiveMode('inik')}
+                style={{flexShrink:0,padding:'9px 14px',borderRadius:10,fontSize:11,
+                  background:'rgba(184,240,230,.10)',border:'1px solid rgba(184,240,230,.25)',
+                  color:'#b8f0e6',cursor:'pointer',fontFamily:'Inter,sans-serif'}}>
+                ← i nik
+              </button>
+            )}
             <button onClick={send} className="btn-p" style={{padding:'9px 18px',borderRadius:10,fontSize:12,flexShrink:0}}>
               send ✦
             </button>
