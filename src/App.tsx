@@ -465,22 +465,6 @@ function ChatPage(){
     }finally{setLoading(false);}
   },[input,loading,userId,activeMode]);
 
-  const sendWithAgent=useCallback(async(message:string,agentMode:string)=>{
-    if(!message.trim()||loading)return;
-    const txt=message.trim();
-    setMsgs(p=>[...p,{role:'user',text:`Rick Royce mode: ${txt}`,time:'just now'}]);
-    setLoading(true);
-    try{
-      const r = await fetch(`${API_BASE}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({user_id:userId,username:'traveler',message:txt,agent_mode:agentMode})});
-      if(!r.ok)throw new Error();
-      const d=await r.json();
-      setMsgs(p=>[...p,{role:'assistant',text:d.reply,time:'just now'}]);
-      if(d.state)setState({...DEFAULT_RUNTIME_STATE,...d.state});
-    }catch{
-      setMsgs(p=>[...p,{role:'assistant',text:'Rick Royce signal failed. Backend did not return a usable response.',time:'just now'}]);
-    }finally{setLoading(false);}
-  },[loading,userId]);
   return(
     <div style={{height:'100vh',display:'flex',paddingTop:60}}>
       {/* Sidebar */}
@@ -559,7 +543,7 @@ function ChatPage(){
                     <p style={{fontSize:12,lineHeight:1.6,color:'rgba(255,255,255,.72)',fontFamily:'Inter,sans-serif',margin:'0 0 10px'}}>{m.suggestedAgent.message}</p>
                     <button
                       className="btn-p"
-                      onClick={()=>{setActiveMode('rick_royce');sendWithAgent(m.suggestedAgent?.originalMessage || m.text,'rick_royce');}}
+                      onClick={()=>{setActiveMode('rick_royce');}}
                       disabled={loading}
                       style={{padding:'8px 12px',borderRadius:9,fontSize:11}}
                     >
